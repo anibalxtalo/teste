@@ -3,7 +3,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatTimeline = document.getElementById("chat-timeline");
   const chatInput = document.querySelector(".chat-footer input");
   const addConversationButton = document.getElementById("add-conversation");
+  const topButtons = document.querySelectorAll(".top-buttons button");
   let currentConversationId = "default";
+
+  // Função para alternar botões no topo
+  function setupTopButtons() {
+    topButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        // Remover a classe 'active' de todos os botões
+        topButtons.forEach((btn) => btn.classList.remove("active"));
+        // Adicionar a classe 'active' ao botão clicado
+        button.classList.add("active");
+        console.log(`Botão '${button.id}' clicado`);
+      });
+    });
+  }
 
   // Inicializar IndexedDB
   function initDB() {
@@ -24,9 +38,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!db.objectStoreNames.contains("conversations")) {
-          const conversationStore = db.createObjectStore("conversations", {
-            keyPath: "id",
-          });
+          db.createObjectStore("conversations", { keyPath: "id" });
         }
       };
 
@@ -41,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const transaction = db.transaction("messages", "readwrite");
       const store = transaction.objectStore("messages");
       const timestamp = new Date().toISOString();
-      store.add({ conversationId, message, sender, timestamp });
+      return store.add({ conversationId, message, sender, timestamp });
     });
   }
 
@@ -50,11 +62,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return initDB().then((db) => {
       const transaction = db.transaction("conversations", "readwrite");
       const store = transaction.objectStore("conversations");
-      store.put(conversation);
+      return store.put(conversation);
     });
   }
 
-  // Carregar mensagens de uma conversa específica
+  // Carregar mensagens de uma conversa
   function loadMessages(conversationId, callback) {
     initDB().then((db) => {
       const transaction = db.transaction("messages", "readonly");
@@ -69,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Atualizar a timeline de mensagens
   function updateTimeline(conversationId) {
     loadMessages(conversationId, (messages) => {
-      if (messages.length === 0) {
+      if (!messages || messages.length === 0) {
         chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
       } else {
         chatTimeline.innerHTML = messages
@@ -88,11 +100,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Adicionar uma nova conversa
   function addConversation(data) {
-    const conversation = document.createElement("conversation-element");
+    const conversation = document.createElement("div");
+    conversation.classList.add("conversation");
     conversation.dataset.id = data.id;
-    conversation.dataset.name = data.name;
-    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-    conversation.dataset.img = data.img || "default.jpg";
+    conversation.innerHTML = `
+      <strong>${data.name}</strong>
+      <p>${data.lastMessage || "Sem mensagens ainda."}</p>
+    `;
     conversationList.appendChild(conversation);
 
     conversation.addEventListener("click", () => {
@@ -103,7 +117,7 @@ document.addEventListener("DOMContentLoaded", () => {
     saveConversation(data);
   }
 
-  // Carregar conversas salvas no banco de dados
+  // Carregar conversas salvas
   function loadConversations() {
     initDB().then((db) => {
       const transaction = db.transaction("conversations", "readonly");
@@ -116,66 +130,46 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
   }
-const addConversationButton = document.getElementById("add-conversation");
-if (addConversationButton) {
-  addConversationButton.addEventListener("click", () => {
-    console.log("Botão clicado");
-  });
-} else {
-  console.error("O botão 'add-conversation' não foi encontrado.");
-}
 
-  
-  // Evento para adicionar nova conversa
-  addConversationButton.addEventListener("click", () => {
-    const id = `conv${Date.now()}`;
-    addConversation({
-      id,
-      name: `Nova Conversa ${id}`,
-      lastMessage: "Sem mensagens ainda.",
-      img: "new.jpg",
+  // Configurar eventos
+  if (addConversationButton) {
+    addConversationButton.addEventListener("click", () => {
+      const id = `conv${Date.now()}`;
+      addConversation({
+        id,
+        name: `Nova Conversa ${id}`,
+        lastMessage: "Sem mensagens ainda.",
+      });
     });
-  });
+  } else {
+    console.error("O botão 'add-conversation' não foi encontrado.");
+  }
 
-  // Enviar mensagem ao pressionar Enter
-  chatInput.addEventListener("keypress", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const message = chatInput.value.trim();
-      if (message) {
-        saveMessage(currentConversationId, message, "me").then(() => {
-          updateTimeline(currentConversationId);
-        });
-        chatInput.value = "";
-
-        // Simular resposta automática do bot
-        setTimeout(() => {
-          const botResponse = "Obrigado pela sua mensagem!";
-          saveMessage(currentConversationId, botResponse, "bot").then(() => {
+  if (chatInput) {
+    chatInput.addEventListener("keypress", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const message = chatInput.value.trim();
+        if (message) {
+          saveMessage(currentConversationId, message, "me").then(() => {
             updateTimeline(currentConversationId);
           });
-        }, 1000);
+          chatInput.value = "";
+
+          // Simular resposta automática do bot
+          setTimeout(() => {
+            const botResponse = "Obrigado pela sua mensagem!";
+            saveMessage(currentConversationId, botResponse, "bot").then(() => {
+              updateTimeline(currentConversationId);
+            });
+          }, 1000);
+        }
       }
-    }
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-  const topButtons = document.querySelectorAll(".top-buttons button");
-
-  // Adicionar evento de clique em cada botão
-  topButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      // Remover a classe 'active' de todos os botões
-      topButtons.forEach((btn) => btn.classList.remove("active"));
-
-      // Adicionar a classe 'active' apenas ao botão clicado
-      button.classList.add("active");
     });
-  });
-});
+  }
 
-
-  // Inicializar aplicação
+  // Inicializar funcionalidades
+  setupTopButtons();
   loadConversations();
   updateTimeline(currentConversationId);
 });
