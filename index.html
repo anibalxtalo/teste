@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat App</title>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Primeira Div: Barra Lateral -->
+    <div class="sidebar">
+      <div class="top-buttons">
+        <button id="bot-button" class="active" aria-label="Bot">
+          <span class="material-icons">smart_toy</span>
+        </button>
+        <button id="human-button" aria-label="Humano">
+          <span class="material-icons">person</span>
+        </button>
+        <button id="group-button" aria-label="Grupo">
+          <span class="material-icons">groups</span>
+        </button>
+        <button id="delivery-button" aria-label="Entregas">
+          <span class="material-icons">local_shipping</span>
+        </button>
+        <button id="shopping-button" aria-label="Compras">
+          <span class="material-icons">shopping_bag</span>
+        </button>
+      </div>
+      <div class="bottom-section">
+        <button id="settings-btn" class="settings-btn" aria-label="Configurações">
+          <span class="material-icons">settings</span>
+        </button>
+        <img id="profile-btn" src="perfil.avif" alt="Foto de Perfil" class="profile-img">
+      </div>
+    </div>
+
+    <!-- Segunda Div: Conteúdo Principal -->
+    <div class="content">
+      <div class="header-section">
+        <h2>Conversas</h2>
+        <div class="header-buttons">
+          <button id="add-conversation" aria-label="Adicionar">
+            <span class="material-icons">add</span>
+          </button>
+          <button id="more-options" aria-label="Mais opções">
+            <span class="material-icons">more_vert</span>
+          </button>
+        </div>
+      </div>
+      <div class="filters-section">
+        <button aria-label="Todos">Todos</button>
+        <button aria-label="Bots">Bots</button>
+        <button aria-label="Humanos">Humanos</button>
+        <button aria-label="Grupos">Grupos</button>
+      </div>
+      <div class="search-section">
+        <input type="text" placeholder="Buscar conversas..." aria-label="Buscar conversas">
+      </div>
+      <!-- Lista de conversas -->
+      <div id="conversation-list" class="conversation-list">
+        <p>Carregando conversas...</p>
+      </div>
+    </div>
+
+    <!-- Terceira Div: Chat -->
+    <div class="chat">
+      <div class="chat-header">
+        <div class="left-buttons">
+          <button aria-label="Câmera">
+            <span class="material-icons">camera_alt</span>
+          </button>
+          <button aria-label="Pesquisar">
+            <span class="material-icons">search</span>
+          </button>
+          <button aria-label="Mais opções">
+            <span class="material-icons">more_vert</span>
+          </button>
+        </div>
+        <div class="chat-title" id="chat-title">Conversa</div>
+      </div>
+      <!-- Timeline do Chat -->
+      <div class="chat-timeline" id="chat-timeline">
+        <p>Selecione uma conversa.</p>
+      </div>
+      <!-- Rodapé do Chat -->
+      <div class="chat-footer">
+        <button aria-label="Emoji">
+          <span class="material-icons">emoji_emotions</span>
+        </button>
+        <button aria-label="Adicionar">
+          <span class="material-icons">add</span>
+        </button>
+        <input type="text" placeholder="Digite uma mensagem" aria-label="Digite uma mensagem">
+        <button aria-label="Microfone">
+          <span class="material-icons">mic</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="components/conversation-element.js"></script>
+  <script src="chat-app.js"></script>
+</body>
+</html>
