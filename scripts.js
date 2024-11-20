@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         button.classList.add("active");
         activeCategory = button.id;
         console.log(`Botão ativo: ${activeCategory}`);
-        filterConversations();
+        filterConversations(); // Chama a função para filtrar conversas
       });
     });
   }
@@ -132,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Filtrar conversas pela categoria ativa
   function filterConversations() {
+    console.log(`Filtrando conversas pela categoria: ${activeCategory}`);
     initDB().then((db) => {
       const transaction = db.transaction("conversations", "readonly");
       const store = transaction.objectStore("conversations");
@@ -143,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
         conversations
           .filter((conv) => conv.category === activeCategory)
           .forEach((conv) => addConversation(conv));
+        console.log("Conversas filtradas e exibidas.");
       };
     });
   }
@@ -178,6 +180,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Inicializar funcionalidades
   setupTopButtons();
-  filterConversations();
   setupSearch(); // Configura a pesquisa de conversas
+  filterConversations(); // Carrega e filtra conversas inicialmente
 });
