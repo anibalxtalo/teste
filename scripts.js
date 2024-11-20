@@ -1,61 +1,51 @@
 document.addEventListener("DOMContentLoaded", () => {
   const conversationList = document.getElementById("conversation-list");
-  const chatTimeline = document.getElementById("chat-timeline");
-  const chatInput = document.querySelector(".chat-footer input");
-  const addConversationButton = document.getElementById("add-conversation"); // Declarado apenas aqui
+  const addConversationButton = document.getElementById("add-conversation");
   const topButtons = document.querySelectorAll(".top-buttons button");
-  let currentConversationId = "default";
+  const popup = document.getElementById("popup-new-conversation");
+  const newConversationForm = document.getElementById("new-conversation-form");
+  const closePopupButton = document.getElementById("close-popup");
+  let activeCategory = "bot"; // Categoria padrão associada ao botão "Bot"
 
-  // Função para alternar botões no topo
-  function setupTopButtons() {
-    topButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        // Remover a classe 'active' de todos os botões
-        topButtons.forEach((btn) => btn.classList.remove("active"));
-        // Adicionar a classe 'active' ao botão clicado
-        button.classList.add("active");
-        console.log(`Botão '${button.id}' clicado`);
-      });
+  // Abrir popup ao clicar no botão "Adicionar Conversa"
+  addConversationButton.addEventListener("click", () => {
+    popup.classList.remove("hidden");
+  });
+
+  // Fechar popup
+  closePopupButton.addEventListener("click", () => {
+    popup.classList.add("hidden");
+  });
+
+  // Trocar categoria ativa ao clicar em um botão superior
+  topButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      topButtons.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+      activeCategory = button.id; // Salva a categoria ativa
+      filterConversations(); // Atualiza as conversas exibidas
     });
-  }
+  });
 
-  // Inicializar IndexedDB
-  function initDB() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open("ChatAppDB", 2);
+  // Enviar formulário para criar uma nova conversa
+  newConversationForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const name = document.getElementById("conversation-name").value;
+    const imageInput = document.getElementById("conversation-image");
+    const image = imageInput.files[0] ? URL.createObjectURL(imageInput.files[0]) : "default.jpg";
 
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
+    const newConversation = {
+      id: `conv-${Date.now()}`,
+      name,
+      img: image,
+      category: activeCategory, // Categoria associada
+      lastMessage: "Sem mensagens ainda."
+    };
 
-        if (!db.objectStoreNames.contains("messages")) {
-          const messageStore = db.createObjectStore("messages", {
-            keyPath: "id",
-            autoIncrement: true,
-          });
-          messageStore.createIndex("conversationId", "conversationId", {
-            unique: false,
-          });
-        }
-
-        if (!db.objectStoreNames.contains("conversations")) {
-          db.createObjectStore("conversations", { keyPath: "id" });
-        }
-      };
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  // Salvar mensagens no IndexedDB
-  function saveMessage(conversationId, message, sender) {
-    return initDB().then((db) => {
-      const transaction = db.transaction("messages", "readwrite");
-      const store = transaction.objectStore("messages");
-      const timestamp = new Date().toISOString();
-      return store.add({ conversationId, message, sender, timestamp });
-    });
-  }
+    await saveConversation(newConversation);
+    popup.classList.add("hidden");
+    addConversation(newConversation);
+  });
 
   // Salvar conversa no IndexedDB
   function saveConversation(conversation) {
@@ -66,59 +56,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Carregar mensagens de uma conversa
-  function loadMessages(conversationId, callback) {
-    initDB().then((db) => {
-      const transaction = db.transaction("messages", "readonly");
-      const store = transaction.objectStore("messages");
-      const index = store.index("conversationId");
-      const request = index.getAll(conversationId);
-
-      request.onsuccess = () => callback(request.result);
-    });
-  }
-
-  // Atualizar a timeline de mensagens
-  function updateTimeline(conversationId) {
-    loadMessages(conversationId, (messages) => {
-      if (!messages || messages.length === 0) {
-        chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
-      } else {
-        chatTimeline.innerHTML = messages
-          .map(
-            (msg) =>
-              `<div class="message ${msg.sender === "me" ? "sent" : "received"}">
-                <p>${msg.message}</p>
-                <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
-              </div>`
-          )
-          .join("");
-        chatTimeline.scrollTop = chatTimeline.scrollHeight;
-      }
-    });
-  }
-
-  // Adicionar uma nova conversa
+  // Adicionar uma conversa ao DOM
   function addConversation(data) {
-    const conversation = document.createElement("div");
-    conversation.classList.add("conversation");
+    const conversation = document.createElement("conversation-element");
     conversation.dataset.id = data.id;
-    conversation.innerHTML = `
-      <strong>${data.name}</strong>
-      <p>${data.lastMessage || "Sem mensagens ainda."}</p>
-    `;
+    conversation.dataset.name = data.name;
+    conversation.dataset.lastMessage = data.lastMessage;
+    conversation.dataset.img = data.img;
     conversationList.appendChild(conversation);
-
-    conversation.addEventListener("click", () => {
-      currentConversationId = data.id;
-      updateTimeline(currentConversationId);
-    });
-
-    saveConversation(data);
   }
 
-  // Carregar conversas salvas
-  function loadConversations() {
+  // Filtrar conversas pela categoria ativa
+  function filterConversations() {
     initDB().then((db) => {
       const transaction = db.transaction("conversations", "readonly");
       const store = transaction.objectStore("conversations");
@@ -126,50 +75,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
       request.onsuccess = () => {
         const conversations = request.result;
-        conversations.forEach((conv) => addConversation(conv));
+        conversationList.innerHTML = ""; // Limpa a lista
+        conversations
+          .filter((conv) => conv.category === activeCategory) // Filtra pela categoria
+          .forEach((conv) => addConversation(conv));
       };
     });
   }
 
-  // Configurar eventos
-  if (addConversationButton) {
-    addConversationButton.addEventListener("click", () => {
-      const id = `conv${Date.now()}`;
-      addConversation({
-        id,
-        name: `Nova Conversa ${id}`,
-        lastMessage: "Sem mensagens ainda.",
-      });
-    });
-  } else {
-    console.error("O botão 'add-conversation' não foi encontrado.");
-  }
-
-  if (chatInput) {
-    chatInput.addEventListener("keypress", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const message = chatInput.value.trim();
-        if (message) {
-          saveMessage(currentConversationId, message, "me").then(() => {
-            updateTimeline(currentConversationId);
-          });
-          chatInput.value = "";
-
-          // Simular resposta automática do bot
-          setTimeout(() => {
-            const botResponse = "Obrigado pela sua mensagem!";
-            saveMessage(currentConversationId, botResponse, "bot").then(() => {
-              updateTimeline(currentConversationId);
-            });
-          }, 1000);
+  // Inicializar IndexedDB
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("ChatAppDB", 2);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains("conversations")) {
+          const store = db.createObjectStore("conversations", { keyPath: "id" });
         }
-      }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = (error) => reject(error);
     });
   }
 
-  // Inicializar funcionalidades
-  setupTopButtons();
-  loadConversations();
-  updateTimeline(currentConversationId);
+  // Inicialização
+  filterConversations();
 });
