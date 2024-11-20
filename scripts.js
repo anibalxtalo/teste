@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const conversationList = document.getElementById("conversation-list");
   const chatTimeline = document.getElementById("chat-timeline");
   const chatInput = document.querySelector(".chat-footer input");
-  const addConversationButton = document.getElementById("add-conversation");
+  const addConversationButton = document.getElementById("add-conversation"); // Declarado apenas aqui
   const topButtons = document.querySelectorAll(".top-buttons button");
   let currentConversationId = "default";
 
