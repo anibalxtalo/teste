@@ -27,83 +27,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Inicializar IndexedDB
-  function initDB() {
-    console.log("Inicializando IndexedDB...");
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open("ChatAppDB", 2);
+  // Função de busca de conversas
+  function setupSearch() {
+    if (!searchInput) {
+      console.error("Campo de busca não encontrado!");
+      return;
+    }
 
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
+    searchInput.addEventListener("input", () => {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      console.log(`Pesquisando por: "${searchTerm}"`);
 
-        if (!db.objectStoreNames.contains("messages")) {
-          const messageStore = db.createObjectStore("messages", {
-            keyPath: "id",
-            autoIncrement: true,
-          });
-          messageStore.createIndex("conversationId", "conversationId", {
-            unique: false,
-          });
-        }
+      const conversationElements = document.querySelectorAll("conversation-element");
 
-        if (!db.objectStoreNames.contains("conversations")) {
-          db.createObjectStore("conversations", { keyPath: "id" });
-        }
-      };
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  // Salvar mensagens no IndexedDB
-  function saveMessage(conversationId, message, sender) {
-    return initDB().then((db) => {
-      const transaction = db.transaction("messages", "readwrite");
-      const store = transaction.objectStore("messages");
-      const timestamp = new Date().toISOString();
-      return store.add({ conversationId, message, sender, timestamp });
-    });
-  }
-
-  // Carregar mensagens de uma conversa
-  function loadMessages(conversationId, callback) {
-    console.log(`Carregando mensagens para a conversa: ${conversationId}`);
-    initDB().then((db) => {
-      const transaction = db.transaction("messages", "readonly");
-      const store = transaction.objectStore("messages");
-      const index = store.index("conversationId");
-      const request = index.getAll(conversationId);
-
-      request.onsuccess = () => {
-        console.log(`Mensagens carregadas:`, request.result);
-        callback(request.result);
-      };
-
-      request.onerror = () => {
-        console.error("Erro ao carregar mensagens:", request.error);
-      };
-    });
-  }
-
-  // Atualizar a timeline de mensagens
-  function updateTimeline(conversationId) {
-    console.log(`Atualizando timeline para a conversa: ${conversationId}`);
-    loadMessages(conversationId, (messages) => {
-      if (!messages || messages.length === 0) {
-        chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
-      } else {
-        chatTimeline.innerHTML = messages
-          .map(
-            (msg) =>
-              `<div class="message ${msg.sender === "me" ? "sent" : "received"}">
-                <p>${msg.message}</p>
-                <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
-              </div>`
-          )
-          .join("");
-        chatTimeline.scrollTop = chatTimeline.scrollHeight;
+      if (!conversationElements.length) {
+        console.warn("Nenhuma conversa para buscar.");
+        return;
       }
+
+      conversationElements.forEach((element) => {
+        const name = element.dataset.name.toLowerCase();
+        if (name.includes(searchTerm)) {
+          element.style.display = ""; // Mostra a conversa
+        } else {
+          element.style.display = "none"; // Esconde a conversa
+        }
+      });
     });
   }
 
@@ -130,24 +79,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Filtrar conversas pela categoria ativa
-  function filterConversations() {
-    initDB().then((db) => {
-      const transaction = db.transaction("conversations", "readonly");
-      const store = transaction.objectStore("conversations");
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const conversations = request.result;
-        conversationList.innerHTML = "";
-        conversations
-          .filter((conv) => conv.category === activeCategory)
-          .forEach((conv) => addConversation(conv));
-      };
-    });
-  }
-
   // Inicializar funcionalidades
   setupTopButtons();
   filterConversations();
+  setupSearch(); // Configura a pesquisa de conversas
 });
