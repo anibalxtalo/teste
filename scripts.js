@@ -10,6 +10,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentConversationId = null; // Define inicialmente como nulo
   let activeCategory = "bot"; // Categoria ativa padrão
 
+  console.log("Aplicação iniciada.");
+
   // Função para alternar botões no topo
   function setupTopButtons() {
     topButtons.forEach((button) => {
@@ -19,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Adicionar a classe 'active' ao botão clicado
         button.classList.add("active");
         activeCategory = button.id; // Atualizar a categoria ativa
+        console.log(`Botão ativo: ${activeCategory}`);
         filterConversations(); // Atualizar a lista de conversas
       });
     });
@@ -26,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Inicializar IndexedDB
   function initDB() {
+    console.log("Inicializando IndexedDB...");
     return new Promise((resolve, reject) => {
       const request = indexedDB.open("ChatAppDB", 2);
 
@@ -40,20 +44,29 @@ document.addEventListener("DOMContentLoaded", () => {
           messageStore.createIndex("conversationId", "conversationId", {
             unique: false,
           });
+          console.log("Object store 'messages' criado.");
         }
 
         if (!db.objectStoreNames.contains("conversations")) {
           db.createObjectStore("conversations", { keyPath: "id" });
+          console.log("Object store 'conversations' criado.");
         }
       };
 
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        console.log("IndexedDB inicializado com sucesso.");
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        console.error("Erro ao inicializar IndexedDB:", request.error);
+        reject(request.error);
+      };
     });
   }
 
   // Salvar mensagens no IndexedDB
   function saveMessage(conversationId, message, sender) {
+    console.log(`Salvando mensagem na conversa ${conversationId}: ${message}`);
     return initDB().then((db) => {
       const transaction = db.transaction("messages", "readwrite");
       const store = transaction.objectStore("messages");
@@ -64,6 +77,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Salvar conversa no IndexedDB
   function saveConversation(conversation) {
+    console.log(`Salvando conversa: ${JSON.stringify(conversation)}`);
     return initDB().then((db) => {
       const transaction = db.transaction("conversations", "readwrite");
       const store = transaction.objectStore("conversations");
@@ -73,21 +87,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Carregar mensagens de uma conversa
   function loadMessages(conversationId, callback) {
+    console.log(`Carregando mensagens da conversa: ${conversationId}`);
     initDB().then((db) => {
       const transaction = db.transaction("messages", "readonly");
       const store = transaction.objectStore("messages");
       const index = store.index("conversationId");
       const request = index.getAll(conversationId);
 
-      request.onsuccess = () => callback(request.result);
+      request.onsuccess = () => {
+        console.log(`Mensagens carregadas:`, request.result);
+        callback(request.result);
+      };
+
+      request.onerror = () => {
+        console.error("Erro ao carregar mensagens:", request.error);
+      };
     });
   }
 
   // Atualizar a timeline de mensagens
   function updateTimeline(conversationId) {
+    console.log(`Atualizando timeline para a conversa: ${conversationId}`);
     loadMessages(conversationId, (messages) => {
       if (!messages || messages.length === 0) {
         chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
+        console.log("Nenhuma mensagem encontrada.");
       } else {
         chatTimeline.innerHTML = messages
           .map(
@@ -99,12 +123,14 @@ document.addEventListener("DOMContentLoaded", () => {
           )
           .join("");
         chatTimeline.scrollTop = chatTimeline.scrollHeight;
+        console.log("Timeline atualizada com sucesso.");
       }
     });
   }
 
   // Adicionar uma nova conversa
   function addConversation(data) {
+    console.log(`Adicionando conversa ao DOM: ${data.id}`);
     const conversation = document.createElement("conversation-element");
     conversation.dataset.id = data.id;
     conversation.dataset.name = data.name;
@@ -114,12 +140,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     conversation.addEventListener("click", () => {
       currentConversationId = data.id; // Atualiza a conversa ativa
+      console.log(`Conversa selecionada: ${currentConversationId}`);
       updateTimeline(currentConversationId);
     });
   }
 
   // Filtrar conversas pela categoria ativa
   function filterConversations() {
+    console.log(`Filtrando conversas pela categoria: ${activeCategory}`);
     initDB().then((db) => {
       const transaction = db.transaction("conversations", "readonly");
       const store = transaction.objectStore("conversations");
@@ -131,21 +159,25 @@ document.addEventListener("DOMContentLoaded", () => {
         conversations
           .filter((conv) => conv.category === activeCategory) // Filtra pela categoria
           .forEach((conv) => addConversation(conv));
+        console.log("Conversas filtradas e exibidas.");
       };
     });
   }
 
   // Eventos para popup
   addConversationButton.addEventListener("click", () => {
+    console.log("Abrindo popup para nova conversa.");
     popup.classList.remove("hidden"); // Exibe o popup
   });
 
   closePopupButton.addEventListener("click", () => {
+    console.log("Fechando popup.");
     popup.classList.add("hidden"); // Fecha o popup
   });
 
   newConversationForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    console.log("Enviando formulário para nova conversa.");
     const name = document.getElementById("conversation-name").value;
     const imageInput = document.getElementById("conversation-image");
     const image = imageInput.files[0] ? URL.createObjectURL(imageInput.files[0]) : "default.jpg";
@@ -175,8 +207,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const message = chatInput.value.trim();
-        if (!message) return;
+        if (!message) {
+          console.error("Mensagem vazia.");
+          return;
+        }
 
+        console.log(`Enviando mensagem: ${message}`);
         await saveMessage(currentConversationId, message, "me");
         updateTimeline(currentConversationId);
 
@@ -185,6 +221,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Simular resposta automática
         setTimeout(async () => {
           const botResponse = "Obrigado pela sua mensagem!";
+          console.log(`Resposta do bot: ${botResponse}`);
           await saveMessage(currentConversationId, botResponse, "bot");
           updateTimeline(currentConversationId);
         }, 1000);
@@ -195,4 +232,5 @@ document.addEventListener("DOMContentLoaded", () => {
   // Inicializar funcionalidades
   setupTopButtons();
   filterConversations(); // Atualizar conversas exibidas
+  console.log("Aplicação inicializada.");
 });
