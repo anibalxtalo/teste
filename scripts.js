@@ -56,58 +56,53 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Salvar conversa no IndexedDB
-  function saveConversation(conversation) {
+  // Salvar mensagens no IndexedDB
+  function saveMessage(conversationId, message, sender) {
     return initDB().then((db) => {
-      const transaction = db.transaction("conversations", "readwrite");
-      const store = transaction.objectStore("conversations");
-      return store.put(conversation);
+      const transaction = db.transaction("messages", "readwrite");
+      const store = transaction.objectStore("messages");
+      const timestamp = new Date().toISOString();
+      return store.add({ conversationId, message, sender, timestamp });
     });
   }
 
-  // Filtrar conversas pela categoria ativa
-  function filterConversations() {
+  // Carregar mensagens de uma conversa
+  function loadMessages(conversationId, callback) {
     initDB().then((db) => {
-      const transaction = db.transaction("conversations", "readonly");
-      const store = transaction.objectStore("conversations");
-      const request = store.getAll();
+      const transaction = db.transaction("messages", "readonly");
+      const store = transaction.objectStore("messages");
+      const index = store.index("conversationId");
+      const request = index.getAll(conversationId);
 
       request.onsuccess = () => {
-        const conversations = request.result;
-        conversationList.innerHTML = "";
-        conversations
-          .filter((conv) => conv.category === activeCategory)
-          .forEach((conv) => addConversation(conv));
+        console.log(`Mensagens carregadas:`, request.result);
+        callback(request.result);
+      };
+
+      request.onerror = () => {
+        console.error("Erro ao carregar mensagens:", request.error);
       };
     });
   }
 
-  // Configurar pesquisa de conversas
-  function setupSearch() {
-    if (!searchInput) {
-      console.error("Campo de busca não encontrado!");
-      return;
-    }
-
-    searchInput.addEventListener("input", () => {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      console.log(`Pesquisando por: "${searchTerm}"`);
-
-      const conversationElements = document.querySelectorAll("conversation-element");
-
-      if (!conversationElements.length) {
-        console.warn("Nenhuma conversa para buscar.");
-        return;
+  // Atualizar a timeline de mensagens
+  function updateTimeline(conversationId) {
+    console.log(`Atualizando timeline para a conversa: ${conversationId}`);
+    loadMessages(conversationId, (messages) => {
+      if (!messages || messages.length === 0) {
+        chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
+      } else {
+        chatTimeline.innerHTML = messages
+          .map(
+            (msg) =>
+              `<div class="message ${msg.sender === "me" ? "sent" : "received"}">
+                <p>${msg.message}</p>
+                <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
+              </div>`
+          )
+          .join("");
+        chatTimeline.scrollTop = chatTimeline.scrollHeight;
       }
-
-      conversationElements.forEach((element) => {
-        const name = element.dataset.name.toLowerCase();
-        if (name.includes(searchTerm)) {
-          element.style.display = ""; // Mostra a conversa
-        } else {
-          element.style.display = "none"; // Esconde a conversa
-        }
-      });
     });
   }
 
@@ -134,29 +129,24 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Atualizar a timeline de mensagens
-  function updateTimeline(conversationId) {
-    console.log(`Atualizando timeline para a conversa: ${conversationId}`);
-    loadMessages(conversationId, (messages) => {
-      if (!messages || messages.length === 0) {
-        chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
-      } else {
-        chatTimeline.innerHTML = messages
-          .map(
-            (msg) =>
-              `<div class="message ${msg.sender === "me" ? "sent" : "received"}">
-                <p>${msg.message}</p>
-                <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
-              </div>`
-          )
-          .join("");
-        chatTimeline.scrollTop = chatTimeline.scrollHeight;
-      }
+  // Filtrar conversas pela categoria ativa
+  function filterConversations() {
+    initDB().then((db) => {
+      const transaction = db.transaction("conversations", "readonly");
+      const store = transaction.objectStore("conversations");
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const conversations = request.result;
+        conversationList.innerHTML = "";
+        conversations
+          .filter((conv) => conv.category === activeCategory)
+          .forEach((conv) => addConversation(conv));
+      };
     });
   }
 
   // Inicializar funcionalidades
   setupTopButtons();
   filterConversations();
-  setupSearch(); // Configura a pesquisa de conversas
 });
