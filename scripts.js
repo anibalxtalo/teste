@@ -128,6 +128,30 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+function setupSearch() {
+  const searchInput = document.getElementById("search-conversations");
+
+  if (!searchInput) {
+    console.error("Campo de busca não encontrado!");
+    return;
+  }
+
+  searchInput.addEventListener("input", () => {
+    const searchTerm = searchInput.value.toLowerCase(); // Converte para minúsculas para busca insensível a maiúsculas/minúsculas
+    const conversations = document.querySelectorAll("conversation-element");
+
+    conversations.forEach((conv) => {
+      const name = conv.dataset.name.toLowerCase(); // Obtem o nome da conversa
+      if (name.includes(searchTerm)) {
+        conv.style.display = ""; // Mostra a conversa
+      } else {
+        conv.style.display = "none"; // Esconde a conversa
+      }
+    });
+  });
+}
+
+  
   // Adicionar uma nova conversa
   function addConversation(data) {
     console.log(`Adicionando conversa ao DOM: ${data.id}`);
