@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const conversationList = document.getElementById("conversation-list");
   const chatTimeline = document.getElementById("chat-timeline");
   const chatInput = document.querySelector(".chat-footer input");
-  const addConversationButton = document.getElementById("new-conversation-btn");
+  const addConversationButton = document.getElementById("add-conversation");
   let currentConversationId = "default";
 
   // Inicializar IndexedDB
