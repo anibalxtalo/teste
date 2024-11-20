@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Carregar mensagens de uma conversa
   function loadMessages(conversationId, callback) {
+    console.log(`Carregando mensagens para a conversa: ${conversationId}`);
     initDB().then((db) => {
       const transaction = db.transaction("messages", "readonly");
       const store = transaction.objectStore("messages");
@@ -112,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
     conversation.dataset.id = data.id;
     conversation.dataset.name = data.name;
     conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-    conversation.dataset.img = data.img || "default.jpg";
+    conversation.dataset.img = data.img || "./assets/default.jpg"; // Caminho corrigido
     conversationList.appendChild(conversation);
 
     conversation.addEventListener("click", () => {
