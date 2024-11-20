@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const popup = document.getElementById("popup-new-conversation");
   const newConversationForm = document.getElementById("new-conversation-form");
   const closePopupButton = document.getElementById("close-popup");
+  const searchInput = document.getElementById("search-conversations");
   let currentConversationId = null; // Define inicialmente como nulo
   let activeCategory = "bot"; // Categoria ativa padrão
 
@@ -128,30 +129,38 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-function setupSearch() {
-  const searchInput = document.getElementById("search-conversations");
+  // Configurar campo de busca
+  function setupSearch() {
+    if (!searchInput) {
+      console.error("Campo de busca não encontrado!");
+      return;
+    }
 
-  if (!searchInput) {
-    console.error("Campo de busca não encontrado!");
-    return;
+    console.log("Campo de busca configurado.");
+    searchInput.addEventListener("input", () => {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      console.log(`Texto buscado: "${searchTerm}"`);
+
+      const conversations = document.querySelectorAll("conversation-element");
+
+      if (!conversations.length) {
+        console.warn("Nenhuma conversa disponível para buscar.");
+        return;
+      }
+
+      conversations.forEach((conv) => {
+        const name = conv.dataset.name?.toLowerCase() || "";
+        if (name.includes(searchTerm)) {
+          conv.style.display = "";
+          console.log(`Conversa "${name}" corresponde à busca.`);
+        } else {
+          conv.style.display = "none";
+          console.log(`Conversa "${name}" não corresponde à busca.`);
+        }
+      });
+    });
   }
 
-  searchInput.addEventListener("input", () => {
-    const searchTerm = searchInput.value.toLowerCase(); // Converte para minúsculas para busca insensível a maiúsculas/minúsculas
-    const conversations = document.querySelectorAll("conversation-element");
-
-    conversations.forEach((conv) => {
-      const name = conv.dataset.name.toLowerCase(); // Obtem o nome da conversa
-      if (name.includes(searchTerm)) {
-        conv.style.display = ""; // Mostra a conversa
-      } else {
-        conv.style.display = "none"; // Esconde a conversa
-      }
-    });
-  });
-}
-
-  
   // Adicionar uma nova conversa
   function addConversation(data) {
     console.log(`Adicionando conversa ao DOM: ${data.id}`);
@@ -256,5 +265,6 @@ function setupSearch() {
   // Inicializar funcionalidades
   setupTopButtons();
   filterConversations(); // Atualizar conversas exibidas
+  setupSearch(); // Configurar busca
   console.log("Aplicação inicializada.");
 });
