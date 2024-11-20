@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const newConversationForm = document.getElementById("new-conversation-form");
   const closePopupButton = document.getElementById("close-popup");
   const searchInput = document.getElementById("search-conversations");
+  const chatTitle = document.getElementById("chat-title");
   let currentConversationId = null;
   let activeCategory = "bot"; // Categoria ativa padrão
 
@@ -111,27 +112,27 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Adicionar uma nova conversa
- function addConversation(data) {
-  const conversation = document.createElement("conversation-element");
-  conversation.dataset.id = data.id;
-  conversation.dataset.name = data.name;
-  conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-  conversation.dataset.img = data.img || "default.jpg";
-  conversationList.appendChild(conversation);
+  function addConversation(data) {
+    const conversation = document.createElement("conversation-element");
+    conversation.dataset.id = data.id;
+    conversation.dataset.name = data.name;
+    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
+    conversation.dataset.img = data.img || "default.jpg";
+    conversationList.appendChild(conversation);
 
-  conversation.addEventListener("click", () => {
-    currentConversationId = data.id; // Atualiza a conversa ativa
-    updateTimeline(currentConversationId);
+    conversation.addEventListener("click", () => {
+      currentConversationId = data.id;
 
-    // Atualiza o título da conversa na barra superior
-    const chatTitle = document.getElementById("chat-title");
-    if (chatTitle) {
-      chatTitle.textContent = data.name; // Define o nome da conversa como título
-      console.log(`Título da conversa atualizado: ${data.name}`);
-    }
-  });
-}
+      // Atualiza o título da conversa na barra superior
+      if (chatTitle) {
+        chatTitle.textContent = data.name;
+        console.log(`Título da conversa atualizado: ${data.name}`);
+      }
 
+      console.log(`Conversa selecionada: ${currentConversationId}`);
+      updateTimeline(currentConversationId);
+    });
+  }
 
   // Atualizar a timeline de mensagens
   function updateTimeline(conversationId) {
