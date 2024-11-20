@@ -401,6 +401,20 @@ body, html {
   display: none;
 }
 
+.search-section {
+  margin: 10px 0;
+  padding: 5px;
+}
+
+.search-section input {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+
 .popup-content {
   background: white;
   padding: 20px;
