@@ -109,26 +109,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Adicionar uma nova conversa
   function addConversation(data) {
-    const conversation = document.createElement("conversation-element");
-    conversation.dataset.id = data.id;
-    conversation.dataset.name = data.name;
-    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-    conversation.dataset.img = data.img || "./assets/default.jpg"; // Caminho corrigido
-    conversationList.appendChild(conversation);
+  const conversation = document.createElement("conversation-element");
+  conversation.dataset.id = data.id;
+  conversation.dataset.name = data.name;
+  conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
+  conversation.dataset.img = data.img || "./assets/default.jpg"; // Caminho para imagem
 
-    conversation.addEventListener("click", () => {
-      currentConversationId = data.id;
+  conversationList.appendChild(conversation);
 
-      // Atualiza o título da conversa na barra superior
-      if (chatTitle) {
-        chatTitle.textContent = data.name;
-        console.log(`Título da conversa atualizado: ${data.name}`);
-      }
+  // Evento de clique para abrir a conversa
+  conversation.addEventListener("click", () => {
+    currentConversationId = data.id;
 
-      console.log(`Conversa selecionada: ${currentConversationId}`);
-      updateTimeline(currentConversationId);
-    });
-  }
+    // Atualiza o título da conversa
+    if (chatTitle) {
+      chatTitle.textContent = data.name;
+    }
+
+    console.log(`Conversa selecionada: ${currentConversationId}`);
+    updateTimeline(currentConversationId);
+  });
+}
 
   // Filtrar conversas pela categoria ativa
   function filterConversations() {
