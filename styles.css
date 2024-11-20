@@ -47,8 +47,10 @@ body, html {
 }
 
 .top-buttons button.active {
-  background-color: #2980b9;
+  background-color: #2980b9; /* Azul destacado */
+  color: #ffffff; /* Texto branco */
 }
+
 
 .bottom-section {
   display: flex;
