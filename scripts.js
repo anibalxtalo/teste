@@ -159,6 +159,22 @@ if (addConversationButton) {
     }
   });
 
+  document.addEventListener("DOMContentLoaded", () => {
+  const topButtons = document.querySelectorAll(".top-buttons button");
+
+  // Adicionar evento de clique em cada botão
+  topButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      // Remover a classe 'active' de todos os botões
+      topButtons.forEach((btn) => btn.classList.remove("active"));
+
+      // Adicionar a classe 'active' apenas ao botão clicado
+      button.classList.add("active");
+    });
+  });
+});
+
+
   // Inicializar aplicação
   loadConversations();
   updateTimeline(currentConversationId);
