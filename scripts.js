@@ -116,7 +116,16 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
   }
+const addConversationButton = document.getElementById("add-conversation");
+if (addConversationButton) {
+  addConversationButton.addEventListener("click", () => {
+    console.log("Botão clicado");
+  });
+} else {
+  console.error("O botão 'add-conversation' não foi encontrado.");
+}
 
+  
   // Evento para adicionar nova conversa
   addConversationButton.addEventListener("click", () => {
     const id = `conv${Date.now()}`;
