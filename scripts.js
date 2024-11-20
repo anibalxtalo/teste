@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const popup = document.getElementById("popup-new-conversation");
   const newConversationForm = document.getElementById("new-conversation-form");
   const closePopupButton = document.getElementById("close-popup");
-  let currentConversationId = "default";
+  let currentConversationId = null; // Define inicialmente como nulo
   let activeCategory = "bot"; // Categoria ativa padrão
 
   // Função para alternar botões no topo
@@ -43,9 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (!db.objectStoreNames.contains("conversations")) {
-          const conversationStore = db.createObjectStore("conversations", {
-            keyPath: "id",
-          });
+          db.createObjectStore("conversations", { keyPath: "id" });
         }
       };
 
@@ -115,7 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
     conversationList.appendChild(conversation);
 
     conversation.addEventListener("click", () => {
-      currentConversationId = data.id;
+      currentConversationId = data.id; // Atualiza a conversa ativa
       updateTimeline(currentConversationId);
     });
   }
@@ -165,8 +163,36 @@ document.addEventListener("DOMContentLoaded", () => {
     popup.classList.add("hidden"); // Fecha o popup
   });
 
+  // Evento para envio de mensagens
+  if (chatInput) {
+    chatInput.addEventListener("keypress", async (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+
+        if (!currentConversationId) {
+          console.error("Nenhuma conversa selecionada.");
+          return;
+        }
+
+        const message = chatInput.value.trim();
+        if (!message) return;
+
+        await saveMessage(currentConversationId, message, "me");
+        updateTimeline(currentConversationId);
+
+        chatInput.value = "";
+
+        // Simular resposta automática
+        setTimeout(async () => {
+          const botResponse = "Obrigado pela sua mensagem!";
+          await saveMessage(currentConversationId, botResponse, "bot");
+          updateTimeline(currentConversationId);
+        }, 1000);
+      }
+    });
+  }
+
   // Inicializar funcionalidades
   setupTopButtons();
   filterConversations(); // Atualizar conversas exibidas
-  updateTimeline(currentConversationId);
 });
