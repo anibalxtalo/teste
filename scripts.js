@@ -8,7 +8,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const newConversationForm = document.getElementById("new-conversation-form");
   const closePopupButton = document.getElementById("close-popup");
   const searchInput = document.getElementById("search-conversations");
-  const chatTitle = document.getElementById("chat-title");
   let currentConversationId = null;
   let activeCategory = "bot"; // Categoria ativa padrão
 
@@ -56,33 +55,74 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Salvar mensagens no IndexedDB
-  function saveMessage(conversationId, message, sender) {
+  // Salvar conversa no IndexedDB
+  function saveConversation(conversation) {
     return initDB().then((db) => {
-      const transaction = db.transaction("messages", "readwrite");
-      const store = transaction.objectStore("messages");
-      const timestamp = new Date().toISOString();
-      return store.add({ conversationId, message, sender, timestamp });
+      const transaction = db.transaction("conversations", "readwrite");
+      const store = transaction.objectStore("conversations");
+      return store.put(conversation);
     });
   }
 
-  // Carregar mensagens de uma conversa
-  function loadMessages(conversationId, callback) {
-    console.log(`Carregando mensagens para a conversa: ${conversationId}`);
+  // Filtrar conversas pela categoria ativa
+  function filterConversations() {
     initDB().then((db) => {
-      const transaction = db.transaction("messages", "readonly");
-      const store = transaction.objectStore("messages");
-      const index = store.index("conversationId");
-      const request = index.getAll(conversationId);
+      const transaction = db.transaction("conversations", "readonly");
+      const store = transaction.objectStore("conversations");
+      const request = store.getAll();
 
       request.onsuccess = () => {
-        console.log(`Mensagens carregadas:`, request.result);
-        callback(request.result);
+        const conversations = request.result;
+        conversationList.innerHTML = "";
+        conversations
+          .filter((conv) => conv.category === activeCategory)
+          .forEach((conv) => addConversation(conv));
       };
+    });
+  }
 
-      request.onerror = () => {
-        console.error("Erro ao carregar mensagens:", request.error);
-      };
+  // Configurar pesquisa de conversas
+  function setupSearch() {
+    if (!searchInput) {
+      console.error("Campo de busca não encontrado!");
+      return;
+    }
+
+    searchInput.addEventListener("input", () => {
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      console.log(`Pesquisando por: "${searchTerm}"`);
+
+      const conversationElements = document.querySelectorAll("conversation-element");
+
+      if (!conversationElements.length) {
+        console.warn("Nenhuma conversa para buscar.");
+        return;
+      }
+
+      conversationElements.forEach((element) => {
+        const name = element.dataset.name.toLowerCase();
+        if (name.includes(searchTerm)) {
+          element.style.display = ""; // Mostra a conversa
+        } else {
+          element.style.display = "none"; // Esconde a conversa
+        }
+      });
+    });
+  }
+
+  // Adicionar uma nova conversa
+  function addConversation(data) {
+    const conversation = document.createElement("conversation-element");
+    conversation.dataset.id = data.id;
+    conversation.dataset.name = data.name;
+    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
+    conversation.dataset.img = data.img || "default.jpg";
+    conversationList.appendChild(conversation);
+
+    conversation.addEventListener("click", () => {
+      currentConversationId = data.id;
+      console.log(`Conversa selecionada: ${currentConversationId}`);
+      updateTimeline(currentConversationId);
     });
   }
 
@@ -107,47 +147,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Adicionar uma nova conversa
-  function addConversation(data) {
-    const conversation = document.createElement("conversation-element");
-    conversation.dataset.id = data.id;
-    conversation.dataset.name = data.name;
-    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-    conversation.dataset.img = data.img || "./assets/default.jpg"; // Caminho corrigido
-    conversationList.appendChild(conversation);
-
-    conversation.addEventListener("click", () => {
-      currentConversationId = data.id;
-
-      // Atualiza o título da conversa na barra superior
-      if (chatTitle) {
-        chatTitle.textContent = data.name;
-        console.log(`Título da conversa atualizado: ${data.name}`);
-      }
-
-      console.log(`Conversa selecionada: ${currentConversationId}`);
-      updateTimeline(currentConversationId);
-    });
-  }
-
-  // Filtrar conversas pela categoria ativa
-  function filterConversations() {
-    initDB().then((db) => {
-      const transaction = db.transaction("conversations", "readonly");
-      const store = transaction.objectStore("conversations");
-      const request = store.getAll();
-
-      request.onsuccess = () => {
-        const conversations = request.result;
-        conversationList.innerHTML = "";
-        conversations
-          .filter((conv) => conv.category === activeCategory)
-          .forEach((conv) => addConversation(conv));
-      };
-    });
-  }
-
   // Inicializar funcionalidades
   setupTopButtons();
   filterConversations();
+  setupSearch(); // Configura a pesquisa de conversas
 });
