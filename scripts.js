@@ -2,35 +2,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const conversationList = document.getElementById("conversation-list");
   const chatTimeline = document.getElementById("chat-timeline");
   const chatInput = document.querySelector(".chat-footer input");
-  const sendMessageButton = document.querySelector(".chat-footer button[aria-label='Microfone']");
   const addConversationButton = document.getElementById("add-conversation");
+  const topButtons = document.querySelectorAll(".top-buttons button");
   const popup = document.getElementById("popup-new-conversation");
   const newConversationForm = document.getElementById("new-conversation-form");
   const closePopupButton = document.getElementById("close-popup");
-  const chatTitle = document.getElementById("chat-title");
   const searchInput = document.getElementById("search-conversations");
-  const topButtons = document.querySelectorAll(".top-buttons button");
+  const chatTitle = document.getElementById("chat-title");
   let currentConversationId = null;
   let activeCategory = "bot"; // Categoria ativa padrão
 
+  console.log("Aplicação iniciada.");
+
+  // Função para alternar botões no topo
+  function setupTopButtons() {
+    topButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        topButtons.forEach((btn) => btn.classList.remove("active"));
+        button.classList.add("active");
+        activeCategory = button.id;
+        console.log(`Botão ativo: ${activeCategory}`);
+        filterConversations();
+      });
+    });
+  }
+
   // Inicializar IndexedDB
   function initDB() {
+    console.log("Inicializando IndexedDB...");
     return new Promise((resolve, reject) => {
       const request = indexedDB.open("ChatAppDB", 2);
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
 
-        if (!db.objectStoreNames.contains("conversations")) {
-          db.createObjectStore("conversations", { keyPath: "id", autoIncrement: true });
-        }
-
         if (!db.objectStoreNames.contains("messages")) {
           const messageStore = db.createObjectStore("messages", {
             keyPath: "id",
             autoIncrement: true,
           });
-          messageStore.createIndex("conversationId", "conversationId", { unique: false });
+          messageStore.createIndex("conversationId", "conversationId", {
+            unique: false,
+          });
+        }
+
+        if (!db.objectStoreNames.contains("conversations")) {
+          db.createObjectStore("conversations", { keyPath: "id" });
         }
       };
 
@@ -39,125 +56,98 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Manter funcionalidade dos botões superiores
-  function setupTopButtons() {
-    topButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        topButtons.forEach((btn) => btn.classList.remove("active"));
-        button.classList.add("active");
-        activeCategory = button.id;
-        console.log(`Categoria ativa: ${activeCategory}`);
-        filterConversations();
-      });
+  // Salvar mensagens no IndexedDB
+  function saveMessage(conversationId, message, sender) {
+    return initDB().then((db) => {
+      const transaction = db.transaction("messages", "readwrite");
+      const store = transaction.objectStore("messages");
+      const timestamp = new Date().toISOString();
+      return store.add({ conversationId, message, sender, timestamp });
     });
   }
 
-  // Restaurar funcionalidade de adição de conversas
-  newConversationForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
+  // Carregar mensagens de uma conversa
+  function loadMessages(conversationId, callback) {
+    console.log(`Carregando mensagens para a conversa: ${conversationId}`);
+    initDB().then((db) => {
+      const transaction = db.transaction("messages", "readonly");
+      const store = transaction.objectStore("messages");
+      const index = store.index("conversationId");
+      const request = index.getAll(conversationId);
 
-    const name = document.getElementById("conversation-name").value;
-    const imgInput = document.getElementById("conversation-image");
-    const img = imgInput.files[0] ? URL.createObjectURL(imgInput.files[0]) : "./assets/default.jpg";
+      request.onsuccess = () => {
+        console.log(`Mensagens carregadas:`, request.result);
+        callback(request.result);
+      };
 
-    const newConversation = {
-      id: Date.now(),
-      name,
-      lastMessage: "Sem mensagens ainda.",
-      img,
-      category: activeCategory, // Categoria atual
-    };
+      request.onerror = () => {
+        console.error("Erro ao carregar mensagens:", request.error);
+      };
+    });
+  }
 
-    const db = await initDB();
-    const transaction = db.transaction("conversations", "readwrite");
-    const store = transaction.objectStore("conversations");
-    store.add(newConversation);
+  // Atualizar a timeline de mensagens
+  function updateTimeline(conversationId) {
+    console.log(`Atualizando timeline para a conversa: ${conversationId}`);
+    loadMessages(conversationId, (messages) => {
+      if (!messages || messages.length === 0) {
+        chatTimeline.innerHTML = "<p>Sem mensagens nesta conversa.</p>";
+      } else {
+        chatTimeline.innerHTML = messages
+          .map(
+            (msg) =>
+              `<div class="message ${msg.sender === "me" ? "sent" : "received"}">
+                <p>${msg.message}</p>
+                <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
+              </div>`
+          )
+          .join("");
+        chatTimeline.scrollTop = chatTimeline.scrollHeight;
+      }
+    });
+  }
 
-    addConversationToDOM(newConversation);
-
-    // Fechar o popup
-    newConversationForm.reset();
-    popup.classList.add("hidden");
-  });
-
-  // Exibir conversas na lista
-  function addConversationToDOM(data) {
+  // Adicionar uma nova conversa
+  function addConversation(data) {
     const conversation = document.createElement("conversation-element");
     conversation.dataset.id = data.id;
     conversation.dataset.name = data.name;
     conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-    conversation.dataset.img = data.img || "./assets/default.jpg";
-    conversation.dataset.category = data.category || "bot";
+    conversation.dataset.img = data.img || "./assets/default.jpg"; // Caminho corrigido
     conversationList.appendChild(conversation);
 
     conversation.addEventListener("click", () => {
       currentConversationId = data.id;
-      chatTitle.textContent = data.name;
-      loadMessages(currentConversationId);
+
+      // Atualiza o título da conversa na barra superior
+      if (chatTitle) {
+        chatTitle.textContent = data.name;
+        console.log(`Título da conversa atualizado: ${data.name}`);
+      }
+
+      console.log(`Conversa selecionada: ${currentConversationId}`);
+      updateTimeline(currentConversationId);
     });
   }
 
-  // Restaurar funcionalidade de mensagens
-  async function sendMessage(content) {
-    if (!currentConversationId) {
-      console.error("Nenhuma conversa selecionada!");
-      return;
-    }
+  // Filtrar conversas pela categoria ativa
+  function filterConversations() {
+    initDB().then((db) => {
+      const transaction = db.transaction("conversations", "readonly");
+      const store = transaction.objectStore("conversations");
+      const request = store.getAll();
 
-    const db = await initDB();
-    const transaction = db.transaction("messages", "readwrite");
-    const store = transaction.objectStore("messages");
-    const message = {
-      conversationId: currentConversationId,
-      message: content,
-      sender: "me",
-      timestamp: new Date().toISOString(),
-    };
-
-    store.add(message);
-
-    addMessageToTimeline(message);
-  }
-
-  function addMessageToTimeline(message) {
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `message ${message.sender === "me" ? "sent" : "received"}`;
-    messageDiv.innerHTML = `
-      <p>${message.message}</p>
-      <small>${new Date(message.timestamp).toLocaleTimeString()}</small>
-    `;
-    chatTimeline.appendChild(messageDiv);
-    chatTimeline.scrollTop = chatTimeline.scrollHeight;
-  }
-
-  async function loadMessages(conversationId) {
-    const db = await initDB();
-    const transaction = db.transaction("messages", "readonly");
-    const store = transaction.objectStore("messages");
-    const index = store.index("conversationId");
-    const request = index.getAll(conversationId);
-
-    request.onsuccess = () => {
-      const messages = request.result;
-      chatTimeline.innerHTML = ""; // Limpar antes de carregar
-      messages.forEach(addMessageToTimeline);
-    };
-  }
-
-  // Restaurar pesquisa
-  function setupSearch() {
-    searchInput.addEventListener("input", () => {
-      const searchTerm = searchInput.value.toLowerCase().trim();
-      const conversationElements = document.querySelectorAll("conversation-element");
-
-      conversationElements.forEach((element) => {
-        const name = element.dataset.name.toLowerCase();
-        element.style.display = name.includes(searchTerm) ? "" : "none";
-      });
+      request.onsuccess = () => {
+        const conversations = request.result;
+        conversationList.innerHTML = "";
+        conversations
+          .filter((conv) => conv.category === activeCategory)
+          .forEach((conv) => addConversation(conv));
+      };
     });
   }
 
   // Inicializar funcionalidades
-  setupTopButtons(); // Configura os botões superiores
-  setupSearch(); // Configura a pesquisa
+  setupTopButtons();
+  filterConversations();
 });
