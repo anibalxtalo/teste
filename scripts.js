@@ -8,12 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const newConversationForm = document.getElementById("new-conversation-form");
   const closePopupButton = document.getElementById("close-popup");
   const chatTitle = document.getElementById("chat-title");
+  const topButtons = document.querySelectorAll(".top-buttons button");
   let currentConversationId = null;
+  let activeCategory = "bot"; // Categoria ativa padrão
 
   // Inicializar IndexedDB
   function initDB() {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open("ChatAppDB", 2); // Certifique-se de usar a versão mais alta (2 neste caso)
+      const request = indexedDB.open("ChatAppDB", 2);
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
@@ -36,76 +38,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Exibir e esconder popup
-  addConversationButton.addEventListener("click", () => {
-    popup.classList.remove("hidden");
-  });
+  // Alternar categorias dos botões superiores
+  function setupTopButtons() {
+    topButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        topButtons.forEach((btn) => btn.classList.remove("active"));
+        button.classList.add("active");
+        activeCategory = button.id; // Categoria ativa baseada no ID do botão
+        console.log(`Categoria ativa: ${activeCategory}`);
+        filterConversations();
+      });
+    });
+  }
 
-  closePopupButton.addEventListener("click", () => {
-    popup.classList.add("hidden");
-  });
-
-  // Criar nova conversa
-  newConversationForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-
-    const name = document.getElementById("conversation-name").value;
-    const imgInput = document.getElementById("conversation-image");
-    const img = imgInput.files[0] ? URL.createObjectURL(imgInput.files[0]) : "./assets/default.jpg";
-
-    const newConversation = {
-      id: Date.now(),
-      name,
-      lastMessage: "Sem mensagens ainda.",
-      img,
-    };
-
-    // Salvar no IndexedDB
-    const db = await initDB();
-    const transaction = db.transaction("conversations", "readwrite");
-    const store = transaction.objectStore("conversations");
-    store.add(newConversation);
-
-    // Atualizar a lista de conversas
-    addConversationToDOM(newConversation);
-
-    // Resetar o formulário e fechar o popup
-    newConversationForm.reset();
-    popup.classList.add("hidden");
-  });
-
-  // Carregar conversas do IndexedDB
-  async function loadConversations() {
+  // Filtrar conversas pela categoria ativa
+  async function filterConversations() {
     const db = await initDB();
     const transaction = db.transaction("conversations", "readonly");
     const store = transaction.objectStore("conversations");
     const request = store.getAll();
 
     request.onsuccess = () => {
-      const conversations = request.result;
-      conversationList.innerHTML = ""; // Limpar lista antes de carregar
+      const conversations = request.result.filter((conv) => conv.category === activeCategory);
+      conversationList.innerHTML = ""; // Limpar lista antes de exibir
       conversations.forEach(addConversationToDOM);
     };
 
     request.onerror = () => {
-      console.error("Erro ao carregar conversas:", request.error);
+      console.error("Erro ao filtrar conversas:", request.error);
     };
-  }
-
-  // Adicionar conversa ao DOM
-  function addConversationToDOM(data) {
-    const conversation = document.createElement("conversation-element");
-    conversation.dataset.id = data.id;
-    conversation.dataset.name = data.name;
-    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
-    conversation.dataset.img = data.img || "./assets/default.jpg";
-    conversationList.appendChild(conversation);
-
-    conversation.addEventListener("click", () => {
-      currentConversationId = data.id;
-      chatTitle.textContent = data.name;
-      loadMessages(currentConversationId);
-    });
   }
 
   // Enviar mensagem
@@ -162,6 +123,22 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  // Adicionar conversa ao DOM
+  function addConversationToDOM(data) {
+    const conversation = document.createElement("conversation-element");
+    conversation.dataset.id = data.id;
+    conversation.dataset.name = data.name;
+    conversation.dataset.lastMessage = data.lastMessage || "Sem mensagens ainda.";
+    conversation.dataset.img = data.img || "./assets/default.jpg";
+    conversationList.appendChild(conversation);
+
+    conversation.addEventListener("click", () => {
+      currentConversationId = data.id;
+      chatTitle.textContent = data.name;
+      loadMessages(currentConversationId);
+    });
+  }
+
   // Configurar envio de mensagens
   sendMessageButton.addEventListener("click", () => {
     const content = chatInput.value.trim();
@@ -171,6 +148,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Inicializar
-  loadConversations();
+  // Inicializar botões superiores e carregar conversas
+  setupTopButtons();
 });
