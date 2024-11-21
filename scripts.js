@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const conversationList = document.getElementById("conversation-list");
   const chatTimeline = document.getElementById("chat-timeline");
   const chatInput = document.querySelector(".chat-footer input");
-  const chatFooter = document.querySelector(".chat-footer");
+  const sendMessageButton = document.querySelector(".chat-footer button[aria-label='Microfone']");
   const addConversationButton = document.getElementById("add-conversation");
   const popup = document.getElementById("popup-new-conversation");
   const newConversationForm = document.getElementById("new-conversation-form");
@@ -10,12 +10,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatTitle = document.getElementById("chat-title");
   let currentConversationId = null;
 
-  console.log("Aplicação iniciada.");
-
   // Inicializar IndexedDB
   function initDB() {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open("ChatAppDB", 2);
+      const request = indexedDB.open("ChatAppDB", 2); // Certifique-se de usar a versão mais alta (2 neste caso)
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
@@ -47,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     popup.classList.add("hidden");
   });
 
-  // Adicionar conversa ao IndexedDB e à lista visual
+  // Criar nova conversa
   newConversationForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -62,70 +60,39 @@ document.addEventListener("DOMContentLoaded", () => {
       img,
     };
 
+    // Salvar no IndexedDB
     const db = await initDB();
     const transaction = db.transaction("conversations", "readwrite");
     const store = transaction.objectStore("conversations");
     store.add(newConversation);
 
+    // Atualizar a lista de conversas
     addConversationToDOM(newConversation);
+
+    // Resetar o formulário e fechar o popup
     newConversationForm.reset();
     popup.classList.add("hidden");
   });
 
-  // Adicionar mensagens ao DOM
-  function addMessageToTimeline(message) {
-    const messageDiv = document.createElement("div");
-    messageDiv.className = `message ${message.sender === "me" ? "sent" : "received"}`;
-    messageDiv.innerHTML = `
-      <p>${message.message}</p>
-      <small>${new Date(message.timestamp).toLocaleTimeString()}</small>
-    `;
-    chatTimeline.appendChild(messageDiv);
-    chatTimeline.scrollTop = chatTimeline.scrollHeight;
-  }
-
-  // Enviar mensagem
-  async function sendMessage(content) {
-    if (!currentConversationId) {
-      console.error("Nenhuma conversa selecionada!");
-      return;
-    }
-
+  // Carregar conversas do IndexedDB
+  async function loadConversations() {
     const db = await initDB();
-    const transaction = db.transaction("messages", "readwrite");
-    const store = transaction.objectStore("messages");
-    const timestamp = new Date().toISOString();
-    const message = {
-      conversationId: currentConversationId,
-      message: content,
-      sender: "me",
-      timestamp,
-    };
-
-    store.add(message);
-    addMessageToTimeline(message);
-  }
-
-  // Carregar mensagens de uma conversa
-  async function loadMessages(conversationId) {
-    const db = await initDB();
-    const transaction = db.transaction("messages", "readonly");
-    const store = transaction.objectStore("messages");
-    const index = store.index("conversationId");
-    const request = index.getAll(conversationId);
+    const transaction = db.transaction("conversations", "readonly");
+    const store = transaction.objectStore("conversations");
+    const request = store.getAll();
 
     request.onsuccess = () => {
-      const messages = request.result;
-      chatTimeline.innerHTML = ""; // Limpa a timeline antes de carregar
-      messages.forEach(addMessageToTimeline);
+      const conversations = request.result;
+      conversationList.innerHTML = ""; // Limpar lista antes de carregar
+      conversations.forEach(addConversationToDOM);
     };
 
     request.onerror = () => {
-      console.error("Erro ao carregar mensagens:", request.error);
+      console.error("Erro ao carregar conversas:", request.error);
     };
   }
 
-  // Adicionar conversa à lista visual
+  // Adicionar conversa ao DOM
   function addConversationToDOM(data) {
     const conversation = document.createElement("conversation-element");
     conversation.dataset.id = data.id;
@@ -141,33 +108,69 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Carregar conversas do IndexedDB
-  async function loadConversations() {
+  // Enviar mensagem
+  async function sendMessage(content) {
+    if (!currentConversationId) {
+      console.error("Nenhuma conversa selecionada!");
+      return;
+    }
+
     const db = await initDB();
-    const transaction = db.transaction("conversations", "readonly");
-    const store = transaction.objectStore("conversations");
-    const request = store.getAll();
+    const transaction = db.transaction("messages", "readwrite");
+    const store = transaction.objectStore("messages");
+    const message = {
+      conversationId: currentConversationId,
+      message: content,
+      sender: "me",
+      timestamp: new Date().toISOString(),
+    };
+
+    store.add(message);
+
+    // Atualizar timeline visualmente
+    addMessageToTimeline(message);
+  }
+
+  // Adicionar mensagem à timeline
+  function addMessageToTimeline(message) {
+    const messageDiv = document.createElement("div");
+    messageDiv.className = `message ${message.sender === "me" ? "sent" : "received"}`;
+    messageDiv.innerHTML = `
+      <p>${message.message}</p>
+      <small>${new Date(message.timestamp).toLocaleTimeString()}</small>
+    `;
+    chatTimeline.appendChild(messageDiv);
+    chatTimeline.scrollTop = chatTimeline.scrollHeight;
+  }
+
+  // Carregar mensagens de uma conversa
+  async function loadMessages(conversationId) {
+    const db = await initDB();
+    const transaction = db.transaction("messages", "readonly");
+    const store = transaction.objectStore("messages");
+    const index = store.index("conversationId");
+    const request = index.getAll(conversationId);
 
     request.onsuccess = () => {
-      const conversations = request.result;
-      conversations.forEach(addConversationToDOM);
+      const messages = request.result;
+      chatTimeline.innerHTML = ""; // Limpar antes de exibir
+      messages.forEach(addMessageToTimeline);
     };
 
     request.onerror = () => {
-      console.error("Erro ao carregar conversas:", request.error);
+      console.error("Erro ao carregar mensagens:", request.error);
     };
   }
 
   // Configurar envio de mensagens
-  chatFooter.addEventListener("submit", (event) => {
-    event.preventDefault();
+  sendMessageButton.addEventListener("click", () => {
     const content = chatInput.value.trim();
     if (content) {
       sendMessage(content);
-      chatInput.value = ""; // Limpa o campo de entrada
+      chatInput.value = "";
     }
   });
 
-  // Inicializar aplicação
+  // Inicializar
   loadConversations();
 });
